@@ -26,56 +26,69 @@ def get_data(filename, label):
 
 ## DNN
 def buildDNN(inputs):
+    with tf.compat.v1.variable_scope('hidden_layer'):
+        weights = tf.compat.v1.get_variable('weights',[INPUT_SIZE, HIDDEN_LAYER_SIZE],
+                            initializer = tf.truncated_normal_initializer(stddev = 0.1))
+        #print(weights)
+        biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER_SIZE],
+                                 initializer = tf.constant_initializer(0.1))
+        layer = tf.nn.sigmoid(tf.matmul(inputs, weights) + biases)
+        #print(layer1)
     #tensor layer as sigmoid layer
     with tf.compat.v1.variable_scope('hidden_layer1'):
-        weights = tf.compat.v1.get_variable('weights',[INPUT_SIZE, HIDDEN_LAYER1_SIZE],
+        weights = tf.compat.v1.get_variable('weights',[HIDDEN_LAYER_SIZE, HIDDEN_LAYER1_SIZE],
                             initializer = tf.truncated_normal_initializer(stddev = 0.1))
-        print(weights)
+        #print(weights)
         biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER1_SIZE],
                                  initializer = tf.constant_initializer(0.1))
-        layer1 = tf.nn.sigmoid(tf.matmul(inputs, weights) + biases)
-
-
+        layer1 = tf.nn.sigmoid(tf.matmul(layer, weights) + biases)
+        #print(layer1)
+        
     #Double projection layer
     with tf.compat.v1.variable_scope('h1'):
         weights = tf.compat.v1.get_variable('weights', [HIDDEN_LAYER1_SIZE, HIDDEN_LAYER1_SIZE],
                                initializer = tf.truncated_normal_initializer(stddev = 0.1))
-        print(weights)
+        #print(weights)
         biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER1_SIZE],
                                  initializer = tf.constant_initializer(0.1))
         h1 = tf.nn.sigmoid(tf.matmul(layer1, weights) + biases)
+        #h1 = tf.transpose(h1)
+        #print(h1)
 
     with tf.compat.v1.variable_scope('h2'):
         weights = tf.compat.v1.get_variable('weights', [HIDDEN_LAYER1_SIZE, HIDDEN_LAYER1_SIZE],
                                initializer = tf.truncated_normal_initializer(stddev = 0.1))
-        print(weights)
+        #print(weights)
         biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER1_SIZE],
                                  initializer = tf.constant_initializer(0.1))
         h2 = tf.nn.sigmoid(tf.matmul(layer1, weights) + biases)
+        #h2 = tf.transpose(h2)
+        #print(h2)
 
     with tf.compat.v1.variable_scope('hidden_layer2'):
-        weights = tf.compat.v1.get_variable('weights', [HIDDEN_LAYER1_SIZE, HIDDEN_LAYER2_SIZE],
+        weights = tf.compat.v1.get_variable('weights', [HIDDEN_LAYER1_SIZE, HIDDEN_LAYER1_SIZE],
                                initializer = tf.truncated_normal_initializer(stddev = 0.1))
-        print(weights)
-        biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER2_SIZE],
+        #print(weights)
+        biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER1_SIZE],
                                  initializer = tf.constant_initializer(0.1))  
-        v1 = np.array(np.kron(h1, h2))
-        layer2 = tf.nn.sigmoid(tf.matmul(h2, weights) + biases)
-
-
-              
+        v1 = np.kron(h1, h2)
+        #print(v1)
+        layer2 = tf.nn.sigmoid(tf.matmul(v1, weights) + biases)
+        #print(layer2)
+            
     with tf.compat.v1.variable_scope('hidden_layer3'):
-        weights = tf.compat.v1.get_variable('weights',[HIDDEN_LAYER2_SIZE, HIDDEN_LAYER3_SIZE],
+        weights = tf.compat.v1.get_variable('weights',[HIDDEN_LAYER1_SIZE, HIDDEN_LAYER2_SIZE],
                             initializer = tf.truncated_normal_initializer(stddev = 0.1))
-        print(weights)
-        biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER3_SIZE],
+        #print(weights)
+        biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER2_SIZE],
                                  initializer = tf.constant_initializer(0.1))
         layer3 = tf.nn.elu(tf.matmul(layer2, weights) + biases)
+    return layer3
     with tf.compat.v1.variable_scope('hidden_layer4'):
-        weights = tf.compat.v1.get_variable('weights',[HIDDEN_LAYER3_SIZE, HIDDEN_LAYER4_SIZE],
+        weights = tf.compat.v1.get_variable('weights',[HIDDEN_LAYER2_SIZE, HIDDEN_LAYER3_SIZE],
                             initializer = tf.truncated_normal_initializer(stddev = 0.1))
-        print(weights)
-        biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER4_SIZE],
+        #print(weights)
+        biases = tf.compat.v1.get_variable('biases', [HIDDEN_LAYER3_SIZE],
                                  initializer = tf.constant_initializer(0.1))
         layer4 = tf.nn.elu(tf.matmul(layer3, weights) + biases)
     return layer4
@@ -85,7 +98,7 @@ def trainNN(X_train, X_test, y_train, y_test, X_val, y_val):
     t = time.time()
     with tf.name_scope('input'):
         x = tf.compat.v1.placeholder(tf.float32, [None, INPUT_SIZE], name = 'xInput')
-        yTrue = tf.compat.v1.placeholder(tf.int32, [None, OUTPUT_SIZE], name = 'yInput')
+        yTrue = tf.compat.v1.placeholder(tf.float32, [None, OUTPUT_SIZE], name = 'yInput')
     # generate the predicted labels from DNN
     yPrediction = buildDNN(x)
     # build the lost functions and I use crossentropy
@@ -94,16 +107,16 @@ def trainNN(X_train, X_test, y_train, y_test, X_val, y_val):
         loss = tf.reduce_mean(crossEntropy)
     # choose the Adam optimizer and the learning rate is chosen by trial and error
     with tf.name_scope('trainDNN'):
-         train = tf.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
+         train = tf.compat.v1.train.AdamOptimizer(LEARNING_RATE).minimize(loss)
     # define the evaluation standard
     correctPrediction = tf.equal(tf.argmax(yPrediction,1), tf.argmax(yTrue,1))
     accuracy = tf.reduce_mean(tf.cast(correctPrediction, tf.float32))
     # START training ... ...
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
         # use Tensorboard to visualize
-        writer = tf.summary.FileWriter('graphDNN',sess.graph)
+        writer = tf.compat.v1.summary.FileWriter('graphDNN',sess.graph)
         # initialize 
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
         # feed the validation and test data
         validationFeed = {x: X_val, yTrue: y_val}
         testFeed = {x: X_test, yTrue: y_test}
@@ -126,23 +139,22 @@ def trainNN(X_train, X_test, y_train, y_test, X_val, y_val):
 
 INPUT_SIZE = 1892
 OUTPUT_SIZE = 3
-
+HIDDEN_LAYER_SIZE = 1024
 HIDDEN_LAYER1_SIZE = 512
 HIDDEN_LAYER2_SIZE = 256
 HIDDEN_LAYER3_SIZE = 128
-HIDDEN_LAYER4_SIZE = 64
 BATCH_SIZE = 100
 LEARNING_RATE = 0.001
-TRAINING_STEPS = 500
+TRAINING_STEPS = 1000
 INTERVAL_SHOW = 50
 validationAccDNN = []
 testAccDNN = []
 #numParameterDNN = (1892*512+512) + (512*256+256) + (256*256+256) + (256*128+128) + (128*3+3)
 tf.compat.v1.reset_default_graph()
 
-X_1, y_1=get_data('Dataset/HH1.csv', 1)
-X_2, y_2=get_data('Dataset/HH2.csv', 2)
-X_3, y_3=get_data('Dataset/HH3.csv', 3)
+X_1, y_1=get_data('Dataset/nep10.csv', 1)
+X_2, y_2=get_data('Dataset/nep20.csv', 2)
+X_3, y_3=get_data('Dataset/nep30.csv', 3)
 #X_4, y_4=get_data('Dataset/HH4.csv', 4)
 #X_5, y_5=get_data('Dataset/nep10.csv', 5)
 #X_6, y_6=get_data('Dataset/nep20.csv', 6)
